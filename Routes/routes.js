@@ -1,12 +1,22 @@
+require('dotenv').config();
 const express = require('express');
 const User= require('../Models/Dataset.js');
 const bcrypt = require('bcryptjs');
-const authenticate= require('../Middleware/Authenticate.js')
+const jwt= require('jsonwebtoken');
+const authenticate= require('../Middleware/Authenticate.js');
+const QuestionModel = require('../Models/Questions.js');
+const questionModel = require('../Models/Questions.js');
 const router= new express.Router();
 
 router.get('/', (req, res) => {
-        res.cookie("hello","yoyoyo");
-        res.send('hello im up and running');
+        questionModel.find({},(err, data) => {
+            if(err) {
+                send.status(404).json({message:'No user records avaliable'})
+            }
+            else{
+                res.send(data);
+            }
+        });
 });
 
 router.get('/api/postdatas', (req, res) => {
@@ -18,9 +28,9 @@ router.get('/api/postdatas', (req, res) => {
 router.post("/register", async (req, res) => {
     const{name,email,phone,work,password}= req.body;
 
-    if(!name || !email || !phone || !work || !password){
-        return res.status(402).json({message:"plz correctly fill the data"});
-    }
+    // if(!name || !email  || !password){
+    //     return res.status(402).json({message:"plz correctly fill the data"});
+    // }
     try{
         const existUser = await User.findOne({email: req.body.email});
         if(existUser){
@@ -30,13 +40,11 @@ router.post("/register", async (req, res) => {
             name:name,
             email:email,
             phone:phone,
-            work:work, 
+            work:work,
             password:password
         });
         await newUser.save();
-        console.log(newUser);
         res.status(200).json({message:"user registered successfully"});
-
     }catch(err){
         console.log(err);
     }
@@ -52,7 +60,9 @@ router.post("/login", async(req, res) => {
         if(founduser){
             const isMatch = await bcrypt.compareSync(password, founduser.password);
             const token = await founduser.generateAuthToken();
-            res.cookie('Engineerspoint', token);
+            res.cookie('Engineerspoint', token,{
+                httpOnly: true
+            });
             if(isMatch){
                 res.status(200).json({message:"user logged in successfully"});
             }
@@ -60,16 +70,29 @@ router.post("/login", async(req, res) => {
                 res.status(403).json({error:"Invalid credentials"});
             }
         }
-        else{
-            res.status(403).json({error:"Invalid credentials"});
-        }
     }catch(err) {
         console.log(err);
     }
 });
-
-router.get('/about', authenticate,(req, res)=>{
-    res.send(req.founduser)
+router.get('/isLoggedin',(req, res)=>{
+    const Cookie = req.cookies.Engineerspoint;
+    if(!Cookie){
+        res.status(403).json({message:"no cookie found"});
+    }
+    const verifyToken = jwt.verify(req.cookies.Engineerspoint,process.env.TOKENKEY);
+    User.find({_id:verifyToken._id,"Tokens.token":req.cookies.Engineerspoint}, (err, user) => {
+        if(err){
+            console.error(err);
+        }
+        else{
+            res.send(user)
+        }});
 });
+
+router.get('/about',authenticate,(req, res)=>{   
+    console.log(req.founduser);
+    res.send(req.founduser);
+});
+
 
 module.exports =router;

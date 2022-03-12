@@ -1,23 +1,27 @@
 require('dotenv').config()
 const jwt= require('jsonwebtoken');
 const User= require('../Models/Dataset.js');
+const cookieParser = require('cookie-parser');
  
 const Authenticate=async(req,res,next)=>{
     try{
-        const token= req.cookies.Engineerspoint;
-        const verifyToken = jwt.verify(token,process.env.TOKENKEY);
-        const rootUser = User.findOne({_id:verifyToken._id, "Tokens.tooken": token});
-        if(!rootUser){
-            throw new Error('user not found');
-        }
-        req.token = token;
-        req.founduser = rootUser;
-        next();
-
+        const verifyToken = jwt.verify(req.cookies.Engineerspoint,process.env.TOKENKEY);
+        console.log(verifyToken._id);
+        User.find({_id:verifyToken._id,"Tokens.token":req.cookies.Engineerspoint}, (err, user) => {
+            if(err){
+                throw new Error('user not found');
+            }
+            else{
+                
+                req.founduser = user[0];
+                // console.log(req.founduser);
+                req.founduser.name = user[0].name;
+            }});
+            next();
     }catch(err){
         res.status(404).send("unauthorised user");
         console.log(err);
     }
 
 }
-module.exports = Authenticate
+module.exports = Authenticate;

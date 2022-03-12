@@ -1,17 +1,19 @@
 require('dotenv').config()
 const mongoose =require('mongoose');
+const passportLocalMongoose  = require("passport-local-mongoose");
+const findOrCreate = require('mongoose-findorcreate');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const postSchema = new mongoose.Schema({
+const userSchema = new mongoose.Schema({
     name: String,
     email: String,
-    phone: Number,
-    work: String,
+
     password: String,
-    Tokens:[{token:String}]
+    Tokens:[{token:String}],
+    Questions:[{questions:String}]
 });
 
-postSchema.pre("save", async function(next){
+userSchema.pre("save", async function(next){
     console.log("Saving");
     if(this.isModified("password"))
     {
@@ -19,7 +21,7 @@ postSchema.pre("save", async function(next){
     }
     next();
 }); 
-postSchema.methods.generateAuthToken = async function(){
+userSchema.methods.generateAuthToken = async function(){
     try{
         let token= jwt.sign({_id:this._id},process.env.TOKENKEY);
         this.Tokens= this.Tokens.concat({token:token});
@@ -30,5 +32,8 @@ postSchema.methods.generateAuthToken = async function(){
     }
 }
 
-const postModel = new mongoose.model('PostModel',postSchema);
+// userSchema.plugin(passportLocalMongoose);
+// userSchema.plugin(findOrCreate);
+
+const postModel = new mongoose.model('PostModel',userSchema);
 module.exports = postModel;
